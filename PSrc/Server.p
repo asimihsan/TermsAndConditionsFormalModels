@@ -2,7 +2,14 @@ event WaitForGetTermsRequests;
 
 event WaitForAcceptTermsRequests;
 
-event IncrementTermsOnTermsServer;
+event WaitForUpdateTermsVersion;
+
+type tUpdateTermsVersion = (source: VersionSetterServer, termsVersion: int);
+
+event eUpdateTermsVersion: tUpdateTermsVersion;
+
+event MaybeUpdateTermsVersion;
+event UpdateTermsVersion;
 
 machine TermsServer {
     var termsCurrent: int;
@@ -15,12 +22,6 @@ machine TermsServer {
     }
 
     state WaitForGetTermsRequests {
-        entry {
-            if ($) {
-                send this, IncrementTermsOnTermsServer;
-            }
-        }
-
         on eGetTermsReq do (req: tGetTermsReq) {
             send req.source, eGetTermsResp, (
                 userId = req.userId,
@@ -28,9 +29,8 @@ machine TermsServer {
             );
         }
 
-        on IncrementTermsOnTermsServer do {
-            termsCurrent = termsCurrent + 1;
-            goto WaitForGetTermsRequests;
+        on eUpdateTermsVersion do (req: tUpdateTermsVersion) {
+            termsCurrent = req.termsVersion;
         }
     }
 }
@@ -52,6 +52,40 @@ machine LevelServer {
                 termsAccepted = req.termsVersion,
                 termsCurrent = termsCurrent
             );
+        }
+
+        on eUpdateTermsVersion do (req: tUpdateTermsVersion) {
+            termsCurrent = req.termsVersion;
+        }
+    }
+}
+
+machine VersionSetterServer {
+    var termsServer: TermsServer;
+    var levelServer: LevelServer;
+    var currentTerms: int;
+
+    start state Init {
+        entry (input: (termsServer: TermsServer,
+                       levelServer: LevelServer,
+                       currentTerms: int)) {
+            termsServer = input.termsServer;
+            levelServer = input.levelServer;
+            currentTerms = input.currentTerms;
+            goto MaybeUpdateTermsVersion;
+        }
+    }
+
+    state MaybeUpdateTermsVersion {
+        entry {
+            var newTerms: int;
+            newTerms = currentTerms + 1;
+            if ($) {
+                send levelServer, eUpdateTermsVersion, (source = this, termsVersion = newTerms);
+                send termsServer, eUpdateTermsVersion, (source = this, termsVersion = newTerms);
+                currentTerms = newTerms;
+                goto MaybeUpdateTermsVersion;
+            }
         }
     }
 }

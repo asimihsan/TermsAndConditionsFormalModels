@@ -7,18 +7,25 @@ machine TestWithUnchangingTerms {
 }
 
 fun SetupClientServerSystem() {
+    var currentTerms: int;
     var termsServerVersion: int;
     var levelServerVersion: int;
     var termsServer: TermsServer;
     var levelServer: LevelServer;
+    var versionSetterServer: VersionSetterServer;
     var userId: int;
 
-    termsServerVersion = 1;
-    levelServerVersion = 1;
-
+    currentTerms = 1;
+    termsServerVersion = currentTerms;
+    levelServerVersion = currentTerms;
 
     termsServer = new TermsServer(termsServerVersion);
     levelServer = new LevelServer(levelServerVersion);
+    versionSetterServer = new VersionSetterServer((
+        termsServer=termsServer,
+        levelServer=levelServer,
+        currentTerms=currentTerms)
+    );
 
     userId = 0;
     new Client((

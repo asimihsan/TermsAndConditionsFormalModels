@@ -1,3 +1,3 @@
 module Client = { Client };
 
-module Server = { TermsServer, LevelServer };
+module Server = { TermsServer, LevelServer, VersionSetterServer };
